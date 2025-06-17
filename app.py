@@ -14,10 +14,14 @@ def get_catalogo():
     try:
         response = requests.get(url)
         print("STATUS:", response.status_code)
-        print("TEXT:", response.text[:500])  # Muestra los primeros 500 caracteres de la respuesta
-        response.raise_for_status()
-        return jsonify(response.json())  # Intenta parsear JSON y devolverlo
+        print("RAW TEXT:", repr(response.text[:300]))  # Imprime texto bruto para detectar errores invisibles
+
+        if not response.text.strip():
+            return jsonify({"error": "Respuesta vacía desde Google Apps Script"}), 502
+
+        return jsonify(response.json())
     except Exception as e:
+        print("EXCEPTION:", str(e))  # 🔍 IMPORTANTE
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
