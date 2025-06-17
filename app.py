@@ -1,38 +1,35 @@
-from flask import Flask, jsonify, request
-import requests
-import os
+from flask import Flask, request, jsonify
 from flask_cors import CORS
+import requests
+import csv
+import io
 
 app = Flask(__name__)
-CORS(app)  # Habilita CORS para todas las rutas
+CORS(app)
+
+SHEET_URLS = {
+    "accesos": "https://docs.google.com/spreadsheets/d/1-r__LMsLbiVj3dXxv8lbY6eGgwSj_gVxOjO1WgRx9K0/export?format=csv&gid=259253579",
+    "catalogo": "https://docs.google.com/spreadsheets/d/1-r__LMsLbiVj3dXxv8lbY6eGgwSj_gVxOjO1WgRx9K0/export?format=csv&gid=0"
+}
 
 @app.route('/api/catalogo', methods=['GET'])
 def get_catalogo():
     sheet = request.args.get("sheet", "accesos")
-    url = f"https://script.google.com/macros/s/AKfycbzpaW4vFJ-vv_k3BfiSriZssmrwsmNmti747rKv5LXbz24c2sV7XRs6SC6fk9sTzle23g/exec?sheet={sheet}"
+    url = SHEET_URLS.get(sheet)
+
+    if not url:
+        return jsonify({"error": "Hoja no encontrada"}), 400
 
     try:
         response = requests.get(url)
-        print("STATUS:", response.status_code)
-        print("RAW TEXT:", repr(response.text[:300]))  # Imprime texto bruto para detectar errores invisibles
+        response.raise_for_status()
 
-        if not response.text.strip():
-            return jsonify({"error": "Respuesta vacía desde Google Apps Script"}), 502
+        # Leer CSV
+        f = io.StringIO(response.text)
+        reader = csv.DictReader(f)
+        data = list(reader)
 
-        return jsonify(response.json())
+        return jsonify(data)
+
     except Exception as e:
-        print("EXCEPTION:", str(e))  # 🔍 IMPORTANTE
         return jsonify({"error": str(e)}), 500
-
-@app.route("/api/debug", methods=["GET"])
-def debug_sheet():
-    url = "https://script.google.com/macros/s/AKfycbzpaW4vFJ-vv_k3BfiSriZssmrwsmNmti747rKv5LXbz24c2sV7XRs6SC6fk9sTzle23g/exec?sheet=accesos"
-    r = requests.get(url)
-    print("STATUS:", r.status_code)
-    print("TEXT:", r.text[:500])
-    return r.text  # Devuelve texto plano para verificar qué llega
-
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
