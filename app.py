@@ -1,8 +1,10 @@
 from flask import Flask, jsonify, request
 import requests
 import os
+from flask_cors import CORS  # 👈 IMPORTANTE
 
 app = Flask(__name__)
+CORS(app)  # 👈 ESTO ACTIVA CORS
 
 @app.route("/api/catalogo")
 def catalogo():
